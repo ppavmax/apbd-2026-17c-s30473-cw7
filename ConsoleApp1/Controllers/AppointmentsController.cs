@@ -134,7 +134,6 @@ public class AppointmentsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateAppointment([FromBody] CreateAppointmentRequestDto request)
     {
-        // Validate reason
         if (string.IsNullOrWhiteSpace(request.Reason))
         {
             return BadRequest(new ErrorResponseDto 
@@ -152,8 +151,7 @@ public class AppointmentsController : ControllerBase
                 StatusCode = 400
             });
         }
-
-        // Validate appointment date is not in the past
+        
         if (request.AppointmentDate < DateTime.UtcNow)
         {
             return BadRequest(new ErrorResponseDto 
@@ -165,8 +163,7 @@ public class AppointmentsController : ControllerBase
 
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-
-        // Check if patient exists and is active
+        
         await using var checkPatientCommand = new SqlCommand("""
             SELECT IdPatient FROM dbo.Patients 
             WHERE IdPatient = @IdPatient AND IsActive = 1;
@@ -182,8 +179,7 @@ public class AppointmentsController : ControllerBase
                 StatusCode = 400
             });
         }
-
-        // Check if doctor exists and is active
+        
         await using var checkDoctorCommand = new SqlCommand("""
             SELECT IdDoctor FROM dbo.Doctors 
             WHERE IdDoctor = @IdDoctor AND IsActive = 1;
@@ -200,7 +196,6 @@ public class AppointmentsController : ControllerBase
             });
         }
 
-        // Check for appointment conflict
         await using var checkConflictCommand = new SqlCommand("""
             SELECT COUNT(*) FROM dbo.Appointments 
             WHERE IdDoctor = @IdDoctor 
@@ -220,7 +215,7 @@ public class AppointmentsController : ControllerBase
             });
         }
 
-        // Create the appointment
+
         await using var insertCommand = new SqlCommand("""
             INSERT INTO dbo.Appointments (IdPatient, IdDoctor, AppointmentDate, Status, Reason)
             OUTPUT INSERTED.IdAppointment
@@ -247,7 +242,7 @@ public class AppointmentsController : ControllerBase
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        // Check if appointment exists
+
         await using var checkAppointmentCommand = new SqlCommand("""
             SELECT Status FROM dbo.Appointments WHERE IdAppointment = @IdAppointment;
             """, connection);
@@ -263,7 +258,7 @@ public class AppointmentsController : ControllerBase
             });
         }
 
-        // Validate status
+
         var validStatuses = new[] { "Scheduled", "Completed", "Cancelled" };
         if (!validStatuses.Contains(request.Status, StringComparer.OrdinalIgnoreCase))
         {
@@ -274,7 +269,7 @@ public class AppointmentsController : ControllerBase
             });
         }
 
-        // If appointment is completed, don't allow changing date
+
         if (currentStatus.ToString() == "Completed" && 
             await GetAppointmentDate(connection, idAppointment) != request.AppointmentDate)
         {
@@ -285,7 +280,6 @@ public class AppointmentsController : ControllerBase
             });
         }
 
-        // Check if patient exists and is active
         await using var checkPatientCommand = new SqlCommand("""
             SELECT IdPatient FROM dbo.Patients 
             WHERE IdPatient = @IdPatient AND IsActive = 1;
@@ -302,7 +296,7 @@ public class AppointmentsController : ControllerBase
             });
         }
 
-        // Check if doctor exists and is active
+
         await using var checkDoctorCommand = new SqlCommand("""
             SELECT IdDoctor FROM dbo.Doctors 
             WHERE IdDoctor = @IdDoctor AND IsActive = 1;
@@ -319,7 +313,7 @@ public class AppointmentsController : ControllerBase
             });
         }
 
-        // Check for appointment conflict if date changed
+ 
         var oldDate = await GetAppointmentDate(connection, idAppointment);
         if (oldDate != request.AppointmentDate)
         {
